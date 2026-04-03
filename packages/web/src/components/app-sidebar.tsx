@@ -251,6 +251,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={chat.id}>
                   <SidebarMenuButton
                     asChild
+                    isActive={pathname === `/chat/${chat.id}`}
                     tooltip={chat.title}
                     className="text-muted-foreground"
                   >

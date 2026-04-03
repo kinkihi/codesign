@@ -182,6 +182,7 @@ export default function ChatPage() {
           onSend={handleSend}
           isLoading={isThinking}
           onStop={() => setIsThinking(false)}
+          className="max-w-[800px]"
         />
       </div>
     </div>
