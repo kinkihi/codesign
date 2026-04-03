@@ -249,6 +249,9 @@ export default function CanvasPage() {
   const [colorPicker, setColorPicker] = React.useState<"fill" | "stroke" | null>(null);
 
   const [upscaleSize, setUpscaleSize] = React.useState<string>("2x");
+  const [refineQuality, setRefineQuality] = React.useState<string>("1K");
+  const [enhanceStrength, setEnhanceStrength] = React.useState(20);
+  const [enhanceTexture, setEnhanceTexture] = React.useState(60);
 
   const [contextMenu, setContextMenu] = React.useState<{
     x: number;
@@ -1457,7 +1460,8 @@ export default function CanvasPage() {
             })}
             {selectedFrameIndices.map((i) => {
               const r = frames[i];
-              const color = r?.tag === "Upscale" ? "#792fff" : FRAME_SEL;
+              const isActionTag = r?.tag && ["Refine", "Enhance", "Upscale", "Stylize"].includes(r.tag);
+              const color = isActionTag ? "#792fff" : FRAME_SEL;
               return r ? <SelectionOverlay key={`fsel-${i}`} r={r} s={s} color={color} /> : null;
             })}
             {multiBbox && (
@@ -1507,7 +1511,7 @@ export default function CanvasPage() {
           const screenW = f.w * s;
           const screenH = f.h * s;
           const isSelected = selectedFrameIndices.includes(i);
-          const isUpscale = f.tag === "Upscale";
+          const isActionTag = ["Refine", "Enhance", "Upscale", "Stylize"].includes(f.tag!);
           return (
             <React.Fragment key={`frame-tag-${f.id || i}`}>
               <div
@@ -1521,37 +1525,26 @@ export default function CanvasPage() {
                   {f.tag}
                 </span>
               </div>
-              {isUpscale && (
+              {isActionTag && isSelected && (
                 <div
-                  className={cn(
-                    "absolute z-[3] flex items-center justify-center overflow-clip",
-                    isSelected
-                      ? "pointer-events-auto backdrop-blur-[50px]"
-                      : "pointer-events-none"
-                  )}
+                  className="pointer-events-auto absolute z-[3] flex items-center justify-center overflow-clip backdrop-blur-[50px]"
                   style={{
                     left: screenX,
                     top: screenY,
                     width: screenW,
                     height: screenH,
                     backgroundColor: "rgba(175, 130, 255, 0.24)",
-                    border: isSelected ? "1px solid #792fff" : "none",
+                    border: "1px solid #792fff",
                   }}
                 >
-                  {isSelected ? (
-                    <button
-                      data-canvas-ui
-                      type="button"
-                      className="flex h-8 items-center gap-1 rounded-full border border-white/10 bg-black px-3 shadow-lg transition-colors hover:bg-black/80"
-                    >
-                      <Play size={14} weight="fill" className="text-white" />
-                      <span className="text-[13px] text-white">Execute</span>
-                    </button>
-                  ) : (
-                    <span className="text-sm font-medium text-foreground/30">
-                      Wait to execute
-                    </span>
-                  )}
+                  <button
+                    data-canvas-ui
+                    type="button"
+                    className="flex h-8 items-center gap-1 rounded-full border border-white/10 bg-black px-3 shadow-lg transition-colors hover:bg-black/80"
+                  >
+                    <Play size={14} weight="fill" className="text-white" />
+                    <span className="text-[13px] text-white">Execute</span>
+                  </button>
                 </div>
               )}
             </React.Fragment>
@@ -1893,6 +1886,79 @@ export default function CanvasPage() {
           )}
         </AnimatePresence>
 
+        {/* Refine popover — shown when a Refine-tagged frame is selected */}
+        <AnimatePresence>
+          {selectedFrameTag === "Refine" && selScreen && selRect && singleSelectedFrame !== null && (
+            <motion.div
+              data-canvas-ui
+              initial={{ opacity: 0, y: -6, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: -6, x: "-50%" }}
+              transition={{ duration: 0.15 }}
+              className="absolute z-30 w-[320px] overflow-clip rounded-lg border border-border bg-card shadow-lg"
+              style={{
+                left: selScreen.x + selScreen.w / 2,
+                top: selScreen.y + selScreen.h + 12,
+                cursor: "default",
+              }}
+            >
+              <div className="flex flex-col gap-4 p-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">Refine</span>
+                  <span className="text-[13px] text-muted-foreground">Select quality</span>
+                </div>
+                <div className="flex gap-2">
+                  {["1K", "2K", "4K"].map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setRefineQuality(q)}
+                      className={cn(
+                        "flex h-6 flex-1 items-center justify-center rounded text-xs transition-colors",
+                        refineQuality === q
+                          ? "border border-violet-500 bg-violet-500/20 text-violet-400"
+                          : "border border-border text-foreground hover:bg-accent"
+                      )}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Enhance popover — shown when an Enhance-tagged frame is selected */}
+        <AnimatePresence>
+          {selectedFrameTag === "Enhance" && selScreen && selRect && singleSelectedFrame !== null && (
+            <motion.div
+              data-canvas-ui
+              initial={{ opacity: 0, y: -6, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: -6, x: "-50%" }}
+              transition={{ duration: 0.15 }}
+              className="absolute z-30 w-[320px] overflow-clip rounded-lg border border-border bg-card shadow-lg"
+              style={{
+                left: selScreen.x + selScreen.w / 2,
+                top: selScreen.y + selScreen.h + 12,
+                cursor: "default",
+              }}
+            >
+              <div className="flex flex-col gap-3 p-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">Enhance</span>
+                  <span className="text-[13px] text-muted-foreground">Set enhance parameters</span>
+                </div>
+                <div className="flex gap-4">
+                  <EnhanceSlider label="Strength" value={enhanceStrength} onChange={setEnhanceStrength} />
+                  <EnhanceSlider label="Texture" value={enhanceTexture} onChange={setEnhanceTexture} />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Context menu */}
         {contextMenu && (
           <CanvasContextMenu
@@ -1923,6 +1989,7 @@ export default function CanvasPage() {
             style={{ cursor: "default" }}
           >
             <div className="flex flex-col gap-1 border-b border-border p-1">
+              {/* [HIDDEN] 矩形工具 — 恢复时取消注释
               <ToolbarButton
                 icon={RectangleIcon}
                 label="矩形"
@@ -1933,6 +2000,7 @@ export default function CanvasPage() {
                   setActiveTool((t) => (t === "rectangle" ? "select" : "rectangle"))
                 }
               />
+              */}
               <ToolbarButton
                 icon={FrameIcon}
                 label="图框"
@@ -2248,12 +2316,62 @@ export default function CanvasPage() {
                   setRightPanelOpen(true);
                 }}
                 modeBadge={canvasModeBadge}
+                hint={!inputExpanded && selectedFrameTag === "Refine" ? "可补充额外描述或要求，或选择添加参考图" : undefined}
                 className={inputExpanded ? "max-w-[800px]" : undefined}
               />
             </motion.div>
           </div>
         </motion.div>
       )}
+    </div>
+  );
+}
+
+function EnhanceSlider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const trackRef = React.useRef<HTMLDivElement>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const update = (clientX: number) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      onChange(Math.round(ratio * 100));
+    };
+    update(e.clientX);
+    const onMove = (ev: PointerEvent) => update(ev.clientX);
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  return (
+    <div className="flex flex-1 flex-col gap-1">
+      <span className="text-xs font-medium text-foreground/90">{label}</span>
+      <div
+        ref={trackRef}
+        onPointerDown={handlePointerDown}
+        className="relative h-6 cursor-pointer overflow-hidden rounded bg-foreground/[0.03]"
+      >
+        <div
+          className="absolute inset-y-0 left-0 bg-violet-500/20"
+          style={{ width: `${value}%` }}
+        />
+        <div
+          className="absolute inset-y-0 left-0 flex items-center justify-center px-1"
+          style={{ width: `${Math.max(value, 12)}%` }}
+        >
+          <span className="text-xs text-foreground">{value}</span>
+        </div>
+        <div
+          className="absolute top-[2px] bottom-[2px] w-1 rounded-sm bg-white/90 shadow-sm"
+          style={{ left: `calc(${value}% - 2px)` }}
+        />
+      </div>
     </div>
   );
 }

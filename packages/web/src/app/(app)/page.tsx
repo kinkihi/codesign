@@ -21,6 +21,7 @@ export default function HomePage() {
 
       <div className="flex items-center justify-center px-6 py-6">
         <ChatInput
+          className="max-w-[800px]"
           onSend={(message) => {
             const chatId = Date.now().toString(36);
             router.push(`/chat/${chatId}?q=${encodeURIComponent(message)}`);

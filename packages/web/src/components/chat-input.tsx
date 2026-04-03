@@ -172,6 +172,7 @@ interface ChatInputProps {
   onStop?: () => void;
   className?: string;
   modeBadge?: React.ReactNode;
+  hint?: string;
   compact?: boolean;
   onExpand?: () => void;
 }
@@ -183,6 +184,7 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
     onStop,
     className,
     modeBadge,
+    hint,
     compact,
     onExpand,
   }, ref) {
@@ -667,6 +669,16 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
               </button>
             )}
             {modeBadge}
+            {hint && (
+              <motion.span
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2 }}
+                className="truncate text-[12px] text-foreground/30"
+              >
+                {hint}
+              </motion.span>
+            )}
           </div>
           <div className="flex items-center">
             {isLoading ? (
