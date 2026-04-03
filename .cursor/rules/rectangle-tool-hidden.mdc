@@ -1,0 +1,28 @@
+---
+description: 矩形工具已隐藏 — 当用户说"矩形工具"时恢复所有相关功能
+globs:
+  - packages/web/src/app/(app)/canvas/page.tsx
+alwaysApply: false
+---
+
+# 矩形工具恢复指南
+
+矩形工具目前已被隐藏。当用户说 **"矩形工具"** 时，需要恢复以下两处：
+
+## 需要恢复的位置
+
+所有隐藏处均标记了 `[HIDDEN] 矩形工具` 注释，搜索此标记即可定位。
+
+### 1. 左侧工具栏按钮（UI 入口）
+- 搜索：`[HIDDEN] 矩形工具 — 恢复时取消注释`
+- 操作：取消注释 `<ToolbarButton icon={RectangleIcon} .../>` 代码块
+- 位置：左侧工具栏 `div.flex.flex-col.gap-1` 内，在 FrameIcon 按钮上方
+
+### 2. 键盘快捷键 R
+- 搜索：`[HIDDEN] 矩形工具快捷键 — 恢复时取消注释`
+- 操作：取消注释 `if ((e.key === "r" || e.key === "R")...)` 代码块
+- 位置：keyboard shortcuts useEffect 中
+
+## 恢复后
+- 删除所有 `[HIDDEN]` 注释包裹
+- 删除本规则文件 `.cursor/rules/rectangle-tool-hidden.mdc`

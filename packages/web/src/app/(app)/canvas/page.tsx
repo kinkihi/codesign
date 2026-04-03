@@ -346,9 +346,11 @@ export default function CanvasPage() {
         e.preventDefault();
         setIsAltDown(true);
       }
+      /* [HIDDEN] 矩形工具快捷键 — 恢复时取消注释
       if ((e.key === "r" || e.key === "R") && !e.ctrlKey && !e.metaKey) {
         setActiveTool((t) => (t === "rectangle" ? "select" : "rectangle"));
       }
+      */
       if ((e.key === "i" || e.key === "I") && !e.ctrlKey && !e.metaKey) {
         setActiveTool((t) => (t === "frame" ? "select" : "frame"));
       }
