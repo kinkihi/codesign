@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: CoDesign Local Executor API
+  version: 0.1.0
+  description: >
+    云端编排器与用户侧 Local Executor 之间的任务投递与状态查询草案。
+    实际部署可合并到统一 API Gateway；此处按职责拆分便于评审。
+
+servers:
+  - url: https://api.example.com/v1/executor
+    description: Production
+  - url: http://127.0.0.1:17300/v1
+    description: Local Executor loopback (optional)
+
+paths:
+  /devices/pair:
+    post:
+      summary: 使用一次性配对码注册设备并获取 refresh token
+      operationId: pairDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pairing_code, device_public_key]
+              properties:
+                pairing_code:
+                  type: string
+                device_public_key:
+                  type: string
+                platform:
+                  type: string
+                  example: win32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairResponse"
+
+  /tasks:
+    post:
+      summary: 入队动作任务（通常由云端下发，Executor 长轮询拉取等价）
+      operationId: enqueueTask
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionEnvelope"
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [task_id, status]
+                properties:
+                  task_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending]
+
+  /tasks/{taskId}:
+    get:
+      summary: 查询任务状态与结果
+      operationId: getTask
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /tasks/{taskId}/result:
+    post:
+      summary: Local Executor 上报执行结果（或由 Executor 主动 POST 到云端）
+      operationId: reportTaskResult
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionResult"
+      responses:
+        "204":
+          description: No Content
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PairResponse:
+      type: object
+      required: [device_id, access_token, refresh_token, expires_in]
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+
+    CollabContext:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+        workset_id:
+          type: string
+        project_id:
+          type: string
+
+    ActionEnvelope:
+      type: object
+      required:
+        - idempotency_key
+        - task_id
+        - action
+        - payload
+        - confirmation
+        - requested_at
+      properties:
+        idempotency_key:
+          type: string
+        task_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum:
+            - open_project
+            - apply_preset
+            - export_still
+            - place_assets
+            - apply_style_pack
+            - set_camera
+            - render_video_clip
+            - replace_selection
+            - sync_workset
+        payload:
+          type: object
+        confirmation:
+          type: string
+          enum: [auto, require_user_approve]
+        requested_at:
+          type: string
+          format: date-time
+        collab_context:
+          $ref: "#/components/schemas/CollabContext"
+
+    ActionResult:
+      type: object
+      required: [task_id, status]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed, cancelled, awaiting_user]
+        renderer_build:
+          type: string
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Artifact"
+        error:
+          $ref: "#/components/schemas/ActionError"
+
+    Artifact:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [thumbnail, still_image, video, scene_delta, log]
+        uri:
+          type: string
+        mime_type:
+          type: string
+        meta:
+          type: object
+
+    ActionError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        detail:
+          type: object

@@ -1,0 +1,14 @@
+---
+description: 当用户说"启动"时，直接启动项目开发服务器
+alwaysApply: true
+---
+
+# 快速启动项目
+
+当用户说"启动"时，不需要询问，直接执行以下命令启动 Next.js 开发服务器：
+
+```bash
+npm run dev -w web
+```
+
+项目运行在 http://localhost:3000。

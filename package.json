@@ -1,0 +1,11 @@
+{
+  "name": "codesign-ai-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w aec-protocol",
+    "test": "npm run test -w aec-protocol"
+  }
+}

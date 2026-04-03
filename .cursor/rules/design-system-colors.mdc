@@ -1,0 +1,26 @@
+---
+description: Design system color guidelines — avoid purple/AI accent colors unless explicitly requested
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# Design System Color Rules
+
+## No Purple / AI Accent Colors
+
+The `--ai` (#792fff) and `--ai-foreground` purple color tokens should NOT be used unless the user explicitly requests it.
+
+Default replacements:
+- `bg-ai` → `bg-foreground`
+- `text-ai` → `text-foreground` or `text-muted-foreground`
+- `text-ai-foreground` → `text-background`
+- `bg-ai/15` → `bg-secondary`
+- `border-ai` → `border-border`
+
+## Preferred Palette
+
+Use the base/neutral design tokens for all UI elements:
+- Backgrounds: `bg-background`, `bg-card`, `bg-secondary`, `bg-accent`
+- Text: `text-foreground`, `text-foreground/80`, `text-muted-foreground`
+- Borders: `border-border`, `border-input`
+- Interactive: `bg-foreground text-background` for primary buttons/actions
