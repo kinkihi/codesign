@@ -33,25 +33,31 @@ export function SkillsIcon({ size = 16, className }: IconProps) {
       className={className}
     >
       <path
-        d="M4.5 7C5.88071 7 7 5.88071 7 4.5C7 3.11929 5.88071 2 4.5 2C3.11929 2 2 3.11929 2 4.5C2 5.88071 3.11929 7 4.5 7Z"
+        d="M8 5.5C8 4.96957 8.21071 4.46086 8.58579 4.08579C8.96086 3.71071 9.46957 3.5 10 3.5H14.5V12.5H10C9.46957 12.5 8.96086 12.7107 8.58579 13.0858C8.21071 13.4609 8 13.9696 8 14.5"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M11.5 7C12.8807 7 14 5.88071 14 4.5C14 3.11929 12.8807 2 11.5 2C10.1193 2 9 3.11929 9 4.5C9 5.88071 10.1193 7 11.5 7Z"
+        d="M1.5 12.5H6C6.53043 12.5 7.03914 12.7107 7.41421 13.0858C7.78929 13.4609 8 13.9696 8 14.5V5.5C8 4.96957 7.78929 4.46086 7.41421 4.08579C7.03914 3.71071 6.53043 3.5 6 3.5H1.5V12.5Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M4.5 14C5.88071 14 7 12.8807 7 11.5C7 10.1193 5.88071 9 4.5 9C3.11929 9 2 10.1193 2 11.5C2 12.8807 3.11929 14 4.5 14Z"
+        d="M10 6H12.5"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M11.5 14C12.8807 14 14 12.8807 14 11.5C14 10.1193 12.8807 9 11.5 9C10.1193 9 9 10.1193 9 11.5C9 12.8807 10.1193 14 11.5 14Z"
+        d="M10 8H12.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 10H12.5"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"

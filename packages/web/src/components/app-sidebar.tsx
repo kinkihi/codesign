@@ -135,6 +135,9 @@ function SearchCommand() {
       <SidebarMenuButton tooltip="Search" onClick={() => setOpen(true)}>
         <MagnifyingGlass weight="regular" />
         <span>Search</span>
+        <kbd className="ml-auto text-[10px] font-medium text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
+          ⌘K
+        </kbd>
       </SidebarMenuButton>
       <CommandDialog
         open={open}

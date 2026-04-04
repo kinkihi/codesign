@@ -129,6 +129,18 @@
   }
 }
 
+/* Project card — front file hover animation */
+.project-card .front-file {
+  transition: transform 300ms linear, box-shadow 300ms linear;
+}
+.project-card:hover .front-file {
+  transform: translate(18px, -12px) rotate(8.71deg);
+  box-shadow: 0px 4px 10px 0px rgba(68, 68, 68, 0.16);
+}
+.dark .project-card:hover .front-file {
+  box-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.4);
+}
+
 /* Aurora burst on send */
 @keyframes aurora-burst {
   0% {
