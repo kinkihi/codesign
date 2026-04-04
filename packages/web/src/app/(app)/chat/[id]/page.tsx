@@ -11,11 +11,22 @@ import {
   PencilSimple,
   FolderPlus,
   Trash,
+  Lightbulb,
+  X,
+  UploadSimple,
+  FolderSimple,
+  ArrowLeft,
+  ArrowsOut,
+  ShareNetwork,
+  ChatCircleDots,
+  SidebarSimple,
+  DownloadSimple,
 } from "@phosphor-icons/react";
 import {
   ChatInput,
   type MentionItem,
   type CommandItem,
+  type SuggestionItem,
 } from "@/components/chat-input";
 import {
   DropdownMenu,
@@ -26,19 +37,295 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+interface MessageAction {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{
+    size?: number;
+    weight?: "regular" | "bold" | "fill";
+    className?: string;
+  }>;
+}
+
+interface ResultCard {
+  icon: React.ComponentType<{
+    size?: number;
+    weight?: "regular" | "bold" | "fill";
+    className?: string;
+  }>;
+  title: string;
+  description: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   mentions?: MentionItem[];
   command?: CommandItem;
+  actions?: MessageAction[];
+  resultCard?: ResultCard;
 }
+
+function ResultDetailView({
+  result,
+  title,
+  messages,
+  onClose,
+}: {
+  result: ResultCard;
+  title: string;
+  messages: Message[];
+  onClose: () => void;
+}) {
+  const [chatPanelOpen, setChatPanelOpen] = React.useState(false);
+  const [panelVisible, setPanelVisible] = React.useState(false);
+  const panelMessagesEndRef = React.useRef<HTMLDivElement>(null);
+  const PANEL_WIDTH = 360;
+
+  return (
+    <motion.div
+      className="absolute inset-0 z-50 flex flex-col bg-background"
+      initial={{ scale: 0.92, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.92, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 32, mass: 0.8 }}
+    >
+      {/* Sidebar toggle — topmost layer, always fixed position */}
+      <button
+        type="button"
+        onClick={() => setChatPanelOpen((v) => !v)}
+        className="absolute right-2 top-2 z-[60] flex size-6 items-center justify-center rounded text-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+        title="展开侧栏"
+      >
+        <SidebarSimple size={16} weight="regular" className="-scale-x-100" />
+      </button>
+
+      {/* Title bar */}
+      <div className="relative z-30 flex h-10 shrink-0 items-center bg-background/80 px-2 backdrop-blur-xl">
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-6 items-center justify-center rounded text-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <ArrowLeft size={16} weight="regular" />
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
+              >
+                <span className="max-w-[240px] truncate text-sm font-semibold text-foreground">
+                  {result.title}
+                </span>
+                <CaretDown size={12} weight="regular" className="shrink-0 text-foreground/40" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={4} className="w-44">
+              <DropdownMenuItem>
+                <PencilSimple weight="regular" className="size-4" />
+                重命名
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <DownloadSimple weight="regular" className="size-4" />
+                保存到本地
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FolderPlus weight="regular" className="size-4" />
+                保存到项目
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <motion.div
+          className="ml-auto flex items-center gap-1"
+          animate={{ paddingRight: chatPanelOpen ? PANEL_WIDTH + 8 : 32 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          <button
+            type="button"
+            className="flex h-6 items-center justify-center rounded border border-border px-2 text-xs text-foreground/80 transition-colors hover:bg-accent"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="flex h-6 items-center justify-center rounded border border-border px-2 text-xs text-foreground/80 transition-colors hover:bg-accent"
+          >
+            Preview
+          </button>
+          <button
+            type="button"
+            className="flex h-6 items-center justify-center rounded bg-foreground px-2 text-xs text-background transition-colors hover:bg-foreground/90"
+          >
+            Share
+          </button>
+        </motion.div>
+      </div>
+
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* Gradient fade below title bar */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-12 bg-gradient-to-b from-background via-background/60 to-transparent" />
+
+        {/* Content — width adapts when sidebar opens */}
+        <motion.div
+          className="flex flex-1 flex-col overflow-y-auto px-4 py-6"
+          animate={{ marginRight: chatPanelOpen ? PANEL_WIDTH : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          <div className="w-full">
+            <motion.div
+              className="overflow-hidden rounded-none border border-border bg-card h-[1123px]"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 30 }}
+            >
+              <div className="p-8">
+                <div className="mb-8 h-14 w-40 rounded-lg bg-secondary" />
+                <div className="mb-6 h-72 w-full max-w-[520px] rounded-lg bg-secondary" />
+                <div className="mb-6 h-6 w-full max-w-[520px] rounded-lg bg-secondary" />
+                <div className="h-72 w-56 rounded-lg bg-secondary" />
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Right sidebar — always mounted, animated via x + visibility, full window height */}
+      <motion.div
+        initial={false}
+        animate={{ x: chatPanelOpen ? 0 : PANEL_WIDTH }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        onAnimationStart={() => {
+          if (chatPanelOpen) setPanelVisible(true);
+        }}
+        onAnimationComplete={() => {
+          if (!chatPanelOpen) setPanelVisible(false);
+        }}
+        className="absolute bottom-0 right-0 top-0 z-40 flex w-[360px] flex-col border-l border-border bg-[var(--ai-foreground)]"
+        style={{
+          pointerEvents: chatPanelOpen ? "auto" : "none",
+          visibility: panelVisible || chatPanelOpen ? "visible" : "hidden",
+        }}
+      >
+        <div className="h-10 shrink-0" />
+
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {messages.length === 0 ? (
+            <p className="pt-8 text-center text-xs text-foreground/30">
+              暂无消息
+            </p>
+          ) : (
+            <div className="flex flex-col gap-6">
+              <AnimatePresence mode="popLayout">
+                {messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    layout
+                    initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 350,
+                      damping: 30,
+                      mass: 0.8,
+                    }}
+                    className="group flex flex-col gap-1"
+                  >
+                    {msg.role === "user" ? (
+                      <div className="flex flex-col items-end gap-1.5">
+                        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-secondary px-4 py-2.5">
+                          <p className="whitespace-pre-wrap text-[13px] leading-6 text-foreground/90">
+                            {msg.content}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2">
+                          {msg.content.split("\n\n").map((para, i) => (
+                            <p
+                              key={i}
+                              className="text-[13px] leading-6 text-foreground/80"
+                            >
+                              {para.split("\n").map((line, j) => (
+                                <React.Fragment key={j}>
+                                  {j > 0 && <br />}
+                                  {renderInlineMarkdown(line)}
+                                </React.Fragment>
+                              ))}
+                            </p>
+                          ))}
+                        </div>
+
+                        {msg.resultCard && (
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground">
+                              生成结果
+                            </span>
+                            <div className="relative flex w-full flex-col items-start gap-2 overflow-hidden rounded-[10px] border border-border/60 bg-[var(--card)] p-3">
+                              <div className="pointer-events-none absolute inset-0 rounded-[10px] bg-gradient-to-br from-foreground/[0.03] to-transparent" />
+                              <div className="relative flex size-7 items-center justify-center rounded-md bg-secondary">
+                                <msg.resultCard.icon
+                                  size={14}
+                                  weight="regular"
+                                  className="text-foreground/60"
+                                />
+                              </div>
+                              <div className="relative flex flex-col gap-1">
+                                <span className="text-[13px] font-semibold text-foreground">
+                                  {msg.resultCard.title}
+                                </span>
+                                <p className="text-[11px] leading-4 text-muted-foreground line-clamp-2">
+                                  {msg.resultCard.description}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={panelMessagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 p-3">
+          <ChatInput
+            onSend={() => {}}
+          />
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+const ACTION_MODES: Record<string, { icon: typeof Lightbulb; label: string; bg: string }> = {
+  planning: { icon: Lightbulb, label: "策划", bg: "rgba(74,222,128,0.20)" },
+};
+
+const PLANNING_SUGGESTIONS: SuggestionItem[] = [
+  { label: "投标汇报", text: "整合项目资料，生成一份结构清晰的投标汇报展示页，包含项目概况、设计理念、效果展示和技术指标" },
+  { label: "前期分析", text: "基于场地资料与调研数据，生成前期分析文本页面，涵盖区位分析、现状解读、SWOT 和设计策略" },
+  { label: "植物配植", text: "根据项目场地条件和设计风格，生成植物配植推荐方案页面，含植物选型、空间层次和季相搭配" },
+  { label: "软装方案", text: "参考项目风格定位，生成室内软装设计方案页面，包含材质选板、家具配置和氛围意向" },
+  { label: "规划研判", text: "梳理用地条件与规划指标，生成规划设计研判页面，含用地分析、功能布局和开发强度测算" },
+];
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const [chatTitle, setChatTitle] = React.useState("New chat");
   const [isRenaming, setIsRenaming] = React.useState(false);
+  const [activeMode, setActiveMode] = React.useState<string | null>(
+    searchParams.get("action"),
+  );
   const [messages, setMessages] = React.useState<Message[]>([
     {
       id: "welcome",
@@ -49,9 +336,21 @@ export default function ChatPage() {
   ]);
   const [isThinking, setIsThinking] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [actionHint, setActionHint] = React.useState<string | undefined>();
+  const [viewingResult, setViewingResult] = React.useState<ResultCard | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const renameInputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const initialQueryRef = React.useRef(searchParams.get("q"));
+
+  const modeConfig = activeMode ? ACTION_MODES[activeMode] : null;
+  const modeBadge = modeConfig ? (
+    <ChatModeBadge
+      icon={modeConfig.icon}
+      bg={modeConfig.bg}
+      onClose={() => setActiveMode(null)}
+    />
+  ) : undefined;
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,7 +359,8 @@ export default function ChatPage() {
   function handleSend(
     content: string,
     mentions: MentionItem[],
-    command: CommandItem | null
+    command: CommandItem | null,
+    meta?: { project?: string | null }
   ) {
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -70,6 +370,50 @@ export default function ChatPage() {
       command: command || undefined,
     };
     setMessages((prev) => [...prev, userMessage]);
+
+    const hasAttachments = mentions.length > 0;
+    const hasProject = !!meta?.project;
+    const hasUrl = /https?:\/\/[^\s]+/.test(content);
+
+    if (activeMode === "planning" && !hasAttachments && !hasProject && !hasUrl) {
+      setIsThinking(true);
+      setTimeout(() => {
+        setIsThinking(false);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content:
+            "好的，我需要更多的信息，你可以文字描述、粘贴链接或选择添加以下任意内容，让我后续生成方案和建议更贴合你的需求。",
+          actions: [
+            { id: "addFile", label: "添加文件", icon: UploadSimple },
+            { id: "selectProject", label: "指定项目", icon: FolderSimple },
+          ],
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }, 800);
+      return;
+    }
+
+    if (activeMode === "planning" && hasAttachments) {
+      const topic = content || "项目策划汇报";
+      setIsThinking(true);
+      setTimeout(() => {
+        setIsThinking(false);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "好的，已根据你提供的资料生成以下方案，点击查看详情。",
+          resultCard: {
+            icon: Lightbulb,
+            title: `${topic.length > 20 ? topic.slice(0, 20) + "..." : topic} 项目策划汇报`,
+            description:
+              "基于项目资料与设计风格的综合分析，打造开放、灵活、生态的设计方案。涵盖项目概况、设计理念、效果展示和技术指标。",
+          },
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }, 800);
+      return;
+    }
 
     const responseContent = generateMockResponse(content, mentions, command);
 
@@ -102,8 +446,31 @@ export default function ChatPage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  function handleMessageAction(actionId: string) {
+    if (actionId === "addFile") {
+      setActionHint("点击 + 添加文件");
+    } else if (actionId === "selectProject") {
+      setActionHint("点击 + 指定项目");
+    }
+    inputRef.current?.focus();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => setActionHint(undefined), 4000);
+  }
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {/* Result detail overlay */}
+      <AnimatePresence>
+        {viewingResult && (
+          <ResultDetailView
+            result={viewingResult}
+            title={chatTitle}
+            messages={messages}
+            onClose={() => setViewingResult(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex h-[52px] shrink-0 items-center px-4">
         <ChatTitleBar
@@ -145,6 +512,8 @@ export default function ChatPage() {
                     message={message}
                     copiedId={copiedId}
                     onCopy={handleCopy}
+                    onAction={handleMessageAction}
+                    onViewResult={setViewingResult}
                   />
                 ) : (
                   <UserMessage message={message} />
@@ -177,11 +546,16 @@ export default function ChatPage() {
       </div>
 
       {/* Input */}
-      <div className="flex items-center justify-center px-6 py-4">
+      <div className="flex shrink-0 items-center justify-center px-6 py-4">
         <ChatInput
+          ref={inputRef}
           onSend={handleSend}
           isLoading={isThinking}
           onStop={() => setIsThinking(false)}
+          modeBadge={modeBadge}
+          hint={actionHint}
+          onActivateMode={(mode) => setActiveMode(mode)}
+          suggestions={activeMode === "planning" ? PLANNING_SUGGESTIONS : undefined}
           className="max-w-[800px]"
         />
       </div>
@@ -193,10 +567,14 @@ function AssistantMessage({
   message,
   copiedId,
   onCopy,
+  onAction,
+  onViewResult,
 }: {
   message: Message;
   copiedId: string | null;
   onCopy: (id: string, content: string) => void;
+  onAction?: (actionId: string) => void;
+  onViewResult?: (card: ResultCard) => void;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -212,6 +590,55 @@ function AssistantMessage({
           </p>
         ))}
       </div>
+
+      {message.actions && message.actions.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {message.actions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => onAction?.(action.id)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-[13px] font-medium text-foreground/70 transition-all hover:bg-accent hover:text-foreground active:scale-[0.97]"
+            >
+              <action.icon size={14} weight="regular" />
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {message.resultCard && (
+        <div className="mt-3 flex flex-col gap-2">
+          <span className="text-xs font-semibold text-muted-foreground">
+            生成结果
+          </span>
+          <div className="group/card">
+            <button
+              type="button"
+              onClick={() => onViewResult?.(message.resultCard!)}
+              className="relative flex w-full flex-col items-start gap-3 overflow-hidden rounded-[12px] border border-border/60 bg-[var(--card)] p-4 text-left transition-all duration-300 hover:scale-[1.01] hover:shadow-lg active:scale-[0.98]"
+            >
+              <div className="pointer-events-none absolute inset-0 rounded-[12px] bg-gradient-to-br from-foreground/[0.03] to-transparent" />
+              <div className="relative flex size-9 items-center justify-center rounded-lg bg-secondary">
+                <message.resultCard.icon
+                  size={18}
+                  weight="regular"
+                  className="text-foreground/60"
+                />
+              </div>
+              <div className="relative flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-foreground">
+                  {message.resultCard.title}
+                </span>
+                <p className="text-[13px] leading-5 text-muted-foreground">
+                  {message.resultCard.description}
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -249,7 +676,7 @@ function UserMessage({ message }: { message: Message }) {
           {message.mentions?.map((m) => (
             <span
               key={m.id}
-              className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary/70"
+              className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
             >
               <m.icon size={10} weight="regular" />
               {m.label}
@@ -433,5 +860,47 @@ function ChatTitleBar({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+function ChatModeBadge({
+  icon: Icon,
+  bg,
+  onClose,
+}: {
+  icon: React.ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill"; className?: string }>;
+  bg: string;
+  onClose: () => void;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClose}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      layout
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+      className="inline-flex h-6 items-center justify-center gap-0.5 rounded p-1 text-foreground backdrop-blur-[50px]"
+      style={{ backgroundColor: bg }}
+    >
+      <span className="flex size-4 items-center justify-center">
+        <Icon size={14} weight="regular" />
+      </span>
+      <AnimatePresence>
+        {hovered && (
+          <motion.span
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 16, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className="flex size-4 items-center justify-center overflow-hidden rounded-full bg-foreground/[0.03]"
+          >
+            <X size={10} weight="bold" />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 }

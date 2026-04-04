@@ -114,6 +114,7 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-ring: rgba(255, 255, 255, 0.2);
+  --ai-foreground: #1e2028;
 }
 
 @layer base {

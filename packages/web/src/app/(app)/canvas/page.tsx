@@ -418,33 +418,50 @@ export default function CanvasPage() {
     const el = canvasRef.current;
     if (!el) return;
 
+    const zoomAtCursor = (e: WheelEvent, dy: number, sensitivity: number) => {
+      const factor = Math.pow(2, -dy * sensitivity);
+      const newZoom = clampZoom(zoomRef.current * factor);
+      const rect = el.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const oldS = zoomRef.current / 100;
+      const newS = newZoom / 100;
+      const wx = (mx - panOffsetRef.current.x) / oldS;
+      const wy = (my - panOffsetRef.current.y) / oldS;
+      setPanOffset({ x: mx - wx * newS, y: my - wy * newS });
+      setZoom(newZoom);
+    };
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
 
-      // macOS trackpad pinch-to-zoom → ctrlKey is true
       if (e.ctrlKey) {
-        const factor = Math.pow(2, -e.deltaY * 0.01);
-        const newZoom = clampZoom(zoomRef.current * factor);
-        const rect = el.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        const oldS = zoomRef.current / 100;
-        const newS = newZoom / 100;
-        const wx = (mx - panOffsetRef.current.x) / oldS;
-        const wy = (my - panOffsetRef.current.y) / oldS;
-        setPanOffset({ x: mx - wx * newS, y: my - wy * newS });
-        setZoom(newZoom);
-      } else {
-        // Two-finger swipe → pan
+        // macOS trackpad pinch-to-zoom or Ctrl+mouse wheel
+        zoomAtCursor(e, e.deltaY, 0.01);
+      } else if (e.deltaX !== 0) {
+        // Trackpad two-finger swipe (has horizontal component) → pan
         setPanOffset((prev) => ({
           x: prev.x - e.deltaX,
           y: prev.y - e.deltaY,
         }));
+      } else {
+        // Mouse scroll wheel (or vertical-only scroll) → zoom at cursor
+        let dy = e.deltaY;
+        if (e.deltaMode === 1) dy *= 33;
+        zoomAtCursor(e, dy, 0.003);
       }
     };
 
+    const onMiddleDown = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
+    };
+
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    el.addEventListener("mousedown", onMiddleDown);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("mousedown", onMiddleDown);
+    };
   }, [hasMounted]);
 
   // ------ Panning (drag) ------
@@ -514,6 +531,15 @@ export default function CanvasPage() {
   );
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // Middle mouse button → pan
+    if (e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      panStartRef.current = { x: e.clientX, y: e.clientY };
+      panOffsetStartRef.current = { ...panOffset };
+      return;
+    }
+
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("[data-canvas-ui]")) return;
 
@@ -2646,15 +2672,15 @@ function FrameIcon({
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
-        d="M2 5.69231V8V10.3077V14H5.69231H8H10.3077H14V10.3077V8V5.69231V2H10.3077H8H5.69231H2V5.69231Z"
+        d="M2 5.69231V8V10.3077V12C2 13.1046 2.89543 14 4 14H5.69231H8H10.3077H12C13.1046 14 14 13.1046 14 12V10.3077V8V5.69231V4C14 2.89543 13.1046 2 12 2H10.3077H8H5.69231H4C2.89543 2 2 2.89543 2 4V5.69231Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <rect x="6" y="2" width="4" height="4" fill="currentColor" />
-      <rect x="6" y="10" width="4" height="4" fill="currentColor" />
-      <rect x="2" y="6" width="4" height="4" fill="currentColor" />
-      <rect x="10" y="6" width="4" height="4" fill="currentColor" />
+      <path d="M2 4C2 2.89543 2.89543 2 4 2H8V8H2V4Z" stroke="currentColor" />
+      <path d="M2 6.5L6.5 2M4 8L8 4" stroke="currentColor" />
+      <path d="M8 12.5L12.5 8M10 14L14 10" stroke="currentColor" />
+      <path d="M8 8H14V12C14 13.1046 13.1046 14 12 14H8V8Z" stroke="currentColor" />
     </svg>
   );
 }

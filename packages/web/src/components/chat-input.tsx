@@ -32,6 +32,8 @@ import {
   CaretDown,
   Faders,
   ListBullets,
+  FileText,
+  Link as LinkIcon,
 } from "@phosphor-icons/react";
 import { CanvasIcon, SkillsIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -125,12 +127,6 @@ const mentionItems: MentionItem[] = [
 
 const commandItems: CommandItem[] = [
   {
-    id: "planning",
-    icon: Lightbulb,
-    label: "项目策划",
-    description: "生成项目策划方案",
-  },
-  {
     id: "material-rec",
     icon: Sparkle,
     label: "素材推荐",
@@ -162,11 +158,19 @@ const commandItems: CommandItem[] = [
   },
 ];
 
+interface SuggestionItem {
+  label: string;
+  text: string;
+}
+
+export type { SuggestionItem };
+
 interface ChatInputProps {
   onSend?: (
     message: string,
     mentions: MentionItem[],
-    command: CommandItem | null
+    command: CommandItem | null,
+    meta?: { project?: string | null }
   ) => void;
   isLoading?: boolean;
   onStop?: () => void;
@@ -175,6 +179,8 @@ interface ChatInputProps {
   hint?: string;
   compact?: boolean;
   onExpand?: () => void;
+  onActivateMode?: (mode: string) => void;
+  suggestions?: SuggestionItem[];
 }
 
 export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
@@ -187,6 +193,8 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
     hint,
     compact,
     onExpand,
+    onActivateMode,
+    suggestions,
   }, ref) {
   const [value, setValue] = React.useState("");
   const [selectedMentions, setSelectedMentions] = React.useState<
@@ -449,7 +457,7 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
     if (!value.trim() && selectedMentions.length === 0 && !activeCommand)
       return;
     triggerSendAnimation();
-    onSend?.(value.trim(), selectedMentions, activeCommand);
+    onSend?.(value.trim(), selectedMentions, activeCommand, { project: selectedProject });
     setValue("");
     setSelectedMentions([]);
     setActiveCommand(null);
@@ -572,6 +580,73 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
         </div>
       )}
 
+      {/* Suggestion pills — hidden when a command is active */}
+      {!compact && !activeCommand && suggestions && suggestions.length > 0 && (
+        <div className="relative z-10 mb-2 flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {suggestions.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => {
+                setValue(item.text);
+                textareaRef.current?.focus();
+              }}
+              className="shrink-0 rounded-full border border-border bg-white px-3 py-1.5 text-xs text-foreground/70 transition-colors hover:bg-accent hover:text-foreground dark:bg-white/10"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Command context bar */}
+      {!compact && activeCommand && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+          className="relative z-10 flex items-center justify-between rounded-t-2xl border border-b-0 border-input bg-secondary/80 px-3 py-2 backdrop-blur-xl"
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="text-[13px] font-medium text-foreground/90">
+              {activeCommand.label}
+            </span>
+            {activeCommand.id === "auto-place" ? (
+              d5Enabled ? (
+                <span className="truncate text-xs text-muted-foreground">
+                  当前d5项目名.drs
+                </span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-xs text-muted-foreground">
+                    未检测到D5 Render 程序
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setD5Enabled(true)}
+                    className="shrink-0 rounded-md bg-foreground/[0.06] px-2 py-0.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
+                  >
+                    链接
+                  </button>
+                </div>
+              )
+            ) : (
+              <span className="truncate text-xs text-muted-foreground">
+                {activeCommand.description}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={removeCommand}
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground/30 transition-colors hover:bg-foreground/5 hover:text-foreground/60"
+          >
+            <X size={14} weight="regular" />
+          </button>
+        </motion.div>
+      )}
+
       {/* Input card with spring physics */}
       <motion.div
         layout
@@ -582,48 +657,45 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
           "relative z-10 border border-input bg-card transition-colors",
           compact
             ? "cursor-pointer rounded-lg hover:border-foreground/10"
-            : "rounded-2xl focus-within:border-foreground/15"
+            : activeCommand
+              ? "rounded-b-2xl rounded-t-none focus-within:border-foreground/15"
+              : "rounded-2xl focus-within:border-foreground/15"
         )}
       >
-        {/* Command badge & mention tags */}
-        {!compact && (activeCommand || selectedMentions.length > 0) && (
+        {/* Inline attachments with hover previews */}
+        {!compact && selectedMentions.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 px-3 pt-3">
-            {activeCommand && (
-              <motion.span
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1 text-xs font-medium text-foreground/70"
-              >
-                <activeCommand.icon size={12} weight="regular" />
-                {activeCommand.label}
-                <button
-                  type="button"
-                  onClick={removeCommand}
-                  className="ml-0.5 rounded-sm p-0.5 transition-colors hover:bg-foreground/10"
-                >
-                  <X size={10} weight="bold" />
-                </button>
-              </motion.span>
-            )}
             {selectedMentions.map((mention) => (
-              <motion.span
-                key={mention.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary"
-              >
-                <mention.icon size={12} weight="regular" />
-                {mention.label}
-                <button
-                  type="button"
-                  onClick={() => removeMention(mention.id)}
-                  className="ml-0.5 rounded-sm p-0.5 transition-colors hover:bg-primary/20"
-                >
-                  <X size={10} weight="bold" />
-                </button>
-              </motion.span>
+              <HoverCardPrimitive.Root key={mention.id} openDelay={300} closeDelay={150}>
+                <HoverCardPrimitive.Trigger asChild>
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    className="group/badge relative inline-flex max-w-[120px] cursor-default items-center gap-1.5 rounded-md bg-secondary py-1 pl-2 pr-2 text-xs font-medium text-foreground/70 transition-colors hover:bg-accent"
+                  >
+                    <mention.icon size={12} weight="regular" className="shrink-0 text-muted-foreground" />
+                    <span className="truncate">{mention.label}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeMention(mention.id); }}
+                      className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-foreground/10 opacity-0 backdrop-blur-md transition-opacity group-hover/badge:opacity-100 hover:bg-foreground/15"
+                    >
+                      <X size={8} weight="bold" className="text-foreground/50" />
+                    </button>
+                  </motion.span>
+                </HoverCardPrimitive.Trigger>
+                <HoverCardPrimitive.Portal>
+                  <HoverCardPrimitive.Content
+                    side="top"
+                    align="center"
+                    sideOffset={8}
+                    className="z-50 w-72 rounded-xl border border-border bg-popover shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+                  >
+                    <MentionHoverContent mention={mention} />
+                  </HoverCardPrimitive.Content>
+                </HoverCardPrimitive.Portal>
+              </HoverCardPrimitive.Root>
             ))}
           </div>
         )}
@@ -657,16 +729,18 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 d5Enabled={d5Enabled}
                 onD5EnabledChange={setD5Enabled}
                 onProjectSelect={setSelectedProject}
+                onActivateMode={onActivateMode}
               />
             )}
             {compact && (
-              <button
-                type="button"
-                className="flex size-8 items-center justify-center rounded-lg text-foreground/60 transition-all duration-200 hover:bg-accent hover:text-foreground/80"
-                onClick={(e) => { e.stopPropagation(); onExpand?.(); }}
-              >
-                <Plus size={16} weight="regular" />
-              </button>
+              <div onClick={(e) => e.stopPropagation()}>
+                <AttachMenu
+                  d5Enabled={d5Enabled}
+                  onD5EnabledChange={setD5Enabled}
+                  onProjectSelect={setSelectedProject}
+                  onActivateMode={onActivateMode}
+                />
+              </div>
             )}
             {modeBadge}
             {hint && (
@@ -815,6 +889,168 @@ export const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
 });
 
 /* ------------------------------------------------------------------ */
+/*  Mention hover preview per type                                     */
+/* ------------------------------------------------------------------ */
+
+function MentionHoverContent({ mention }: { mention: MentionItem }) {
+  switch (mention.id) {
+    case "image":
+      return (
+        <div className="flex flex-col gap-3 p-3">
+          <div className="overflow-hidden rounded-lg border border-border/40">
+            <img
+              src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80"
+              alt="preview"
+              className="aspect-square w-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col gap-0.5 px-0.5">
+            <p className="text-sm font-medium text-foreground">mountain-landscape.jpg</p>
+            <p className="text-xs text-muted-foreground">image/jpeg</p>
+          </div>
+        </div>
+      );
+
+    case "project-files":
+      return (
+        <div className="flex flex-col gap-2.5 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+              <FolderSimple size={18} weight="regular" className="text-foreground/50" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">项目文件</p>
+              <p className="text-xs text-muted-foreground">3 个文件被引用</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-lg bg-muted/50 p-2">
+            {[
+              { name: "总平面图.dwg", size: "2.4 MB" },
+              { name: "效果图_v2.psd", size: "18.7 MB" },
+              { name: "设计说明.pdf", size: "540 KB" },
+            ].map((f) => (
+              <div key={f.name} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs">
+                <FileText size={13} weight="regular" className="shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-foreground/70">{f.name}</span>
+                <span className="shrink-0 text-muted-foreground/50">{f.size}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "materials":
+      return (
+        <div className="flex flex-col gap-2.5 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+              <Cube size={18} weight="regular" className="text-foreground/50" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">素材库</p>
+              <p className="text-xs text-muted-foreground">已关联项目素材资源</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {["from-amber-100 to-amber-200", "from-stone-200 to-stone-300", "from-slate-100 to-slate-200", "from-zinc-300 to-zinc-400"].map((g, i) => (
+              <div key={i} className={cn("aspect-square rounded-lg bg-gradient-to-br", g)} />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">可用素材: <span className="text-foreground/70">1,234 个</span></p>
+        </div>
+      );
+
+    case "bim":
+      return (
+        <div className="flex flex-col gap-2.5 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+              <Buildings size={18} weight="regular" className="text-foreground/50" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">BIM 模型</p>
+              <p className="text-xs text-muted-foreground">引用 BIM 模型数据</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-2.5 text-xs">
+            {[
+              ["文件格式", "Revit (.rvt)"],
+              ["构件数量", "2,847 个"],
+              ["文件大小", "156 MB"],
+              ["最近更新", "2026-03-28"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-muted-foreground">{k}</span>
+                <span className="text-foreground/70">{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "standards":
+      return (
+        <div className="flex flex-col gap-2.5 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+              <BookOpen size={18} weight="regular" className="text-foreground/50" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">规范标准</p>
+              <p className="text-xs text-muted-foreground">建筑规范与标准引用</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-lg bg-muted/50 p-2">
+            {[
+              "GB 50016-2014 建筑设计防火规范",
+              "GB 50352-2019 民用建筑设计统一标准",
+              "GB 55037-2022 建筑防火通用规范",
+            ].map((s) => (
+              <div key={s} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs">
+                <BookOpen size={12} weight="regular" className="shrink-0 text-muted-foreground" />
+                <span className="truncate text-foreground/70">{s}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "web":
+      return (
+        <div className="flex flex-col gap-2.5 p-3">
+          <div className="aspect-[2/1] w-full overflow-hidden rounded-lg bg-gradient-to-br from-muted to-secondary">
+            <div className="flex h-full flex-col items-center justify-center gap-1.5 text-muted-foreground/40">
+              <GlobeSimple size={24} weight="regular" />
+              <span className="text-[10px]">网页预览</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-foreground">网页内容引用</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">引用网页中的文字、图片等内容作为设计参考</p>
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+              <LinkIcon size={10} weight="regular" />
+              <span className="truncate">https://example.com/reference</span>
+            </div>
+          </div>
+        </div>
+      );
+
+    default:
+      return (
+        <div className="flex items-center gap-2.5 p-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+            <mention.icon size={18} weight="regular" className="text-foreground/50" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">{mention.label}</p>
+            <p className="text-xs text-muted-foreground">{mention.description}</p>
+          </div>
+        </div>
+      );
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Attach / + menu                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -827,6 +1063,7 @@ interface AttachMenuItem {
   label: string;
   hasSubmenu?: boolean;
   href?: string;
+  mode?: string;
 }
 
 const attachSections: { items: AttachMenuItem[]; key: string }[] = [
@@ -840,7 +1077,7 @@ const attachSections: { items: AttachMenuItem[]; key: string }[] = [
   {
     key: "actions",
     items: [
-      { icon: Lightbulb, label: "策划", href: "/chat/new?action=planning" },
+      { icon: Lightbulb, label: "策划", href: "/chat/new?action=planning", mode: "planning" },
       { icon: CanvasIcon, label: "画布", href: "/canvas" },
     ],
   },
@@ -857,10 +1094,12 @@ function AttachMenu({
   d5Enabled,
   onD5EnabledChange,
   onProjectSelect,
+  onActivateMode,
 }: {
   d5Enabled: boolean;
   onD5EnabledChange: (v: boolean) => void;
   onProjectSelect: (name: string) => void;
+  onActivateMode?: (mode: string) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
@@ -996,7 +1235,11 @@ function AttachMenu({
                   key={item.label}
                   onClick={() => {
                     setOpen(false);
-                    if (item.href) router.push(item.href);
+                    if (item.mode && onActivateMode) {
+                      onActivateMode(item.mode);
+                    } else if (item.href) {
+                      router.push(item.href);
+                    }
                   }}
                 >
                   <item.icon size={16} weight="regular" className="shrink-0" />

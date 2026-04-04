@@ -18,6 +18,7 @@ import {
   Check,
 } from "@phosphor-icons/react";
 import { SkillsIcon } from "@/components/icons";
+import { useAuth } from "@/components/auth-context";
 
 import {
   Sidebar,
@@ -183,6 +184,7 @@ function SearchCommand() {
 export function AppSidebar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { logout } = useAuth();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -341,7 +343,7 @@ export function AppSidebar() {
                   了解更多
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={logout}>
                   <SignOut weight="regular" className="size-4" />
                   退出登录
                 </DropdownMenuItem>

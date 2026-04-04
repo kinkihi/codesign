@@ -19,7 +19,7 @@ export default function HomePage() {
         <QuickActions />
       </div>
 
-      <div className="flex items-center justify-center px-6 py-6">
+      <div className="flex shrink-0 items-center justify-center px-6 py-6">
         <ChatInput
           className="max-w-[800px]"
           onSend={(message) => {
